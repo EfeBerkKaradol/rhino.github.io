@@ -1,15 +1,18 @@
 // src/products.js
-// Not: Buradaki ticket ve modelViewUrl build sırasında GitHub Actions Secrets'tan gelir.
-// Lokal geliştirirken .env.local dosyandan okunur.
+// Not: 1. ürün ENV’den, 2-3. ürün doğrudan ticket string’inden okunur.
+// Hepsi aynı Model View URL’ini kullanıyor (EU sistemi).
+
+const MVU = (import.meta.env.VITE_SD_MODEL_VIEW_URL ?? "").trim();
 
 const PRODUCTS = [
   {
     id: "panel-v1",
-    name: "Panel V1 (ShapeDiver)",
-    modelViewUrl: import.meta.env.VITE_SD_MODEL_VIEW_URL,
-    ticket: import.meta.env.VITE_SD_TICKET,
+    name: "Panel V1 (ShapeDiver / ENV)",
+    modelViewUrl: MVU,
+    ticket: (import.meta.env.VITE_SD_TICKET ?? "").trim(),
+    // Bu üründe parametreleri statik tanımlıyoruz (GUID'ler mevcut)
+    paramSource: "static",
     params: [
-      // Aşağıdaki ID'ler ShapeDiver'daki gerçek GUID'lerdir:
       {
         id: "e21fe99d-83fe-463e-8aa8-3739181ff153",
         label: "Panel Width",
@@ -46,9 +49,25 @@ const PRODUCTS = [
         step: 1,
         default: 10,
       },
-      // Renk parametren varsa buraya:
-      // { id: "RENK_GUID", label: "Color", type: "color", default: "#00c8a3" }
     ],
+  },
+
+  // === Yeni Ürün 1 (ticket senin verdiğin) ===
+  {
+    id: "product-2",
+    name: "Ürün 2 (ShapeDiver)",
+    modelViewUrl: MVU,
+    ticket: (import.meta.env.VITE_SD_TICKET_2 ?? "").trim(),
+    paramSource: "auto", // session.parameters'tan dinamik üret
+  },
+
+  // === Yeni Ürün 2 (ticket senin verdiğin) ===
+  {
+    id: "product-3",
+    name: "Ürün 3 (ShapeDiver)",
+    modelViewUrl: MVU,
+    ticket: (import.meta.env.VITE_SD_TICKET_3 ?? "").trim(),
+    paramSource: "auto",
   },
 ];
 
