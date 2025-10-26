@@ -28,7 +28,7 @@ body {
   padding: 16px;
 }
 
-/* HEADER */
+/* ===== HEADER ===== */
 .header {
   display: flex;
   align-items: center;
@@ -38,7 +38,7 @@ body {
   background: var(--card);
   border: 1px solid var(--muted);
   border-radius: 16px;
-  flex-wrap: wrap;
+  flex-wrap: wrap; /* küçük ekranlarda alt satıra insin */
 }
 .brand {
   display: flex;
@@ -70,7 +70,7 @@ body {
   opacity: 1;
 }
 
-/* HERO */
+/* ===== HERO ===== */
 .hero {
   margin: 18px 0;
   padding: 18px;
@@ -85,7 +85,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: wrap; /* başlık ve badge küçük ekranda sarar */
 }
 .hero h1 {
   margin: 0 0 8px;
@@ -104,11 +104,11 @@ body {
   font-size: 12px;
 }
 
-/* LAYOUT */
+/* ===== LAYOUT ===== */
 .main {
   display: grid;
   gap: 16px;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr; /* mobile default: tek sütun */
 }
 .card {
   background: var(--card);
@@ -116,18 +116,22 @@ body {
   border-radius: 16px;
   padding: 14px;
 }
+
+/* tablet ve üstü: 2 sütun (sol viewer, sağ panel) */
 @media (min-width: 700px) {
   .main {
     grid-template-columns: 1.3fr 0.9fr;
   }
 }
+
+/* geniş ekran: biraz daha geniş viewer */
 @media (min-width: 1100px) {
   .main {
     grid-template-columns: 1.5fr 0.9fr;
   }
 }
 
-/* VIEWER */
+/* ===== VIEWER ===== */
 .view-toolbar {
   display: flex;
   gap: 8px;
@@ -162,7 +166,7 @@ body {
 
 .viewer {
   position: relative;
-  height: 340px;
+  height: 340px; /* mobile yükseklik */
   border: 1px dashed var(--muted);
   border-radius: 12px;
   display: grid;
@@ -172,12 +176,13 @@ body {
   .viewer {
     height: 420px;
   }
-}
+} /* tablet */
 @media (min-width: 1100px) {
   .viewer {
     height: 520px;
   }
-}
+} /* desktop */
+
 .viewer-placeholder {
   text-align: center;
   opacity: 0.85;
@@ -205,7 +210,7 @@ body {
   }
 }
 
-/* PANEL */
+/* ===== PANEL ===== */
 .panel h3 {
   margin: 2px 0 12px;
   font-size: clamp(14px, 2.8vw, 16px);
@@ -252,7 +257,7 @@ body {
   overflow: auto;
 }
 
-/* FOOTER */
+/* ===== FOOTER ===== */
 .footer {
   margin: 18px 0 6px;
   display: flex;
