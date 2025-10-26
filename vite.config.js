@@ -4,5 +4,5 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  base: "/", // kullanıcı sitesi: EfeBerkKaradol.github.io
+  base: "/rhino.github.io/", // kullanıcı sitesi: EfeBerkKaradol.github.io
 });
