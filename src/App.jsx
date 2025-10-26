@@ -80,8 +80,15 @@ export default function App() {
           } catch {}
         }
 
-        const ticket = product.ticket;
-        const modelViewUrl = product.modelViewUrl;
+        // >>> BURASI ÖNEMLİ: env değerlerini trim’le
+        const ticket = (product.ticket ?? "").trim().replace(/[\r\n]/g, "");
+        const modelViewUrl = (product.modelViewUrl ?? "").trim();
+
+        console.log("env check", {
+          ticket_len: ticket.length,
+          url: modelViewUrl,
+        });
+
         if (!ticket || !modelViewUrl) {
           alert(`'${product.name}' için ticket veya modelViewUrl eksik.`);
           return;
