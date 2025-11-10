@@ -203,9 +203,13 @@ export default function App() {
 
         setStatus(`'${product.name}' yüklendi.`);
       } catch (err) {
-        console.error(err);
+        console.error("Session error:", err);
+
+        const raw = String(err?.message || "");
         setStatus(
-          "Session oluşturulamadı. (Whitelist/ticket ayarlarını kontrol edin.)"
+          "Session oluşturulamadı: " +
+            (raw || "Bilinmeyen hata") +
+            " (ticket / modelViewUrl / domain / embedding ayarlarını kontrol edin.)"
         );
       }
     })();
@@ -241,6 +245,9 @@ export default function App() {
       );
     }
   };
+
+  console.log("MVU", import.meta.env.VITE_SD_MODEL_VIEW_URL);
+  console.log("TICKET", import.meta.env.VITE_SD_TICKET?.slice(0, 10) + "...");
 
   return (
     <div className="page">
