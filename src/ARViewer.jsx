@@ -28,7 +28,7 @@ const ARViewer = ({
 
   const [isCapturing, setIsCapturing] = useState(false);
 
-  // ---- Kamera destek / ortam kontrolü ----
+  // ---- Ortam / destek kontrolü ----
   const checkSupport = () => {
     const isSecure =
       window.isSecureContext ||
@@ -59,7 +59,7 @@ const ARViewer = ({
   const getMediaStream = useCallback(async () => {
     checkSupport();
 
-    const baseConstraints = {
+    const envConstraints = {
       video: {
         facingMode: { ideal: "environment" },
       },
@@ -67,13 +67,12 @@ const ARViewer = ({
 
     try {
       console.log("[AR] getUserMedia (environment) çağrılıyor...");
-      return await navigator.mediaDevices.getUserMedia(baseConstraints);
+      return await navigator.mediaDevices.getUserMedia(envConstraints);
     } catch (err) {
       console.warn(
         "[AR] environment constraints ile kamera açılamadı, generic video ile yeniden denenecek:",
         err
       );
-      // Generic video fallback
       return await navigator.mediaDevices.getUserMedia({ video: true });
     }
   }, []);
@@ -87,32 +86,7 @@ const ARViewer = ({
       console.log("[AR] Kamera başlatılıyor...");
       const stream = await getMediaStream();
       console.log("[AR] Kamera stream alındı:", stream);
-
-      setCameraStream(stream);
-
-      const video = videoRef.current;
-      if (!video) {
-        console.error("[AR] videoRef.current null, video elementi bulunamadı");
-      } else {
-        video.srcObject = stream;
-        video.playsInline = true;
-        video.muted = true;
-
-        const playPromise = video.play();
-        if (playPromise && typeof playPromise.then === "function") {
-          playPromise
-            .then(() => console.log("[AR] Video play() başarılı"))
-            .catch((err) => {
-              console.warn("[AR] Video play() engellendi:", err);
-            });
-        } else {
-          console.log("[AR] Video play() için promise dönmedi (eski tarayıcı)");
-          video.play().catch((err) => {
-            console.warn("[AR] Video play() hatası:", err);
-          });
-        }
-      }
-
+      setCameraStream(stream); // videoRef'e bağlama işini effect yapacak
       setArMode(true);
     } catch (err) {
       console.error("Kamera erişim hatası:", err);
@@ -139,11 +113,47 @@ const ARViewer = ({
     }
   }, [getMediaStream]);
 
+  // ---- Kamera stream video elementine bağlansın ----
+  useEffect(() => {
+    if (!cameraStream || !videoRef.current) return;
+
+    const video = videoRef.current;
+    console.log("[AR] videoRef ve stream bağlanıyor...");
+    video.srcObject = cameraStream;
+    video.playsInline = true;
+    video.muted = true;
+
+    const play = async () => {
+      try {
+        await video.play();
+        console.log("[AR] Video play() başarılı");
+      } catch (err) {
+        // AbortError genelde React dev/StrictMode'da önemsiz
+        if (err.name === "AbortError") {
+          console.warn("[AR] Video play() AbortError (önemsiz olabilir):", err);
+        } else {
+          console.warn("[AR] Video play() hatası:", err);
+          setError(
+            "Video oynatılamadı. Tarayıcı ayarlarından otomatik oynatmaya izin verin."
+          );
+        }
+      }
+    };
+
+    play();
+
+    // Burada cleanup'ta video.srcObject = null demiyoruz;
+    // sadece stopCamera() içinde track'leri durduracağız.
+  }, [cameraStream]);
+
   // ---- Kamerayı durdur ----
   const stopCamera = useCallback(() => {
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
     setArMode(false);
 
@@ -185,7 +195,7 @@ const ARViewer = ({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     rendererRef.current = renderer;
 
-    // Işıklandırma
+    // Işıklar
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
 
@@ -194,7 +204,7 @@ const ARViewer = ({
     directionalLight.castShadow = true;
     scene.add(directionalLight);
 
-    // Basit model
+    // Basit model (ileride ShapeDiver modeline bağlayabilirsin)
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshStandardMaterial({
       color: 0x7aa2ff,
@@ -260,10 +270,44 @@ const ARViewer = ({
     }
   }, [modelPosition, modelRotation, modelScale]);
 
-  // ---- Unmount'ta kamerayı kapat ----
-  useEffect(() => {
-    return () => stopCamera();
-  }, [stopCamera]);
+  // ---- Ekran görüntüsü ----
+  const captureScreenshot = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current || !rendererRef.current) return;
+
+    setIsCapturing(true);
+
+    try {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+
+      const combinedCanvas = document.createElement("canvas");
+      const ctx = combinedCanvas.getContext("2d");
+      combinedCanvas.width = canvas.width || canvas.clientWidth;
+      combinedCanvas.height = canvas.height || canvas.clientHeight;
+
+      // Arka plan: kamera görüntüsü
+      ctx.drawImage(video, 0, 0, combinedCanvas.width, combinedCanvas.height);
+      // Üstüne 3D canvas
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.drawImage(canvas, 0, 0, combinedCanvas.width, combinedCanvas.height);
+
+      const link = document.createElement("a");
+      link.download = `AR_${productName || "Ürün"}_${new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/[:.]/g, "-")}.png`;
+      link.href = combinedCanvas.toDataURL("image/png");
+      link.click();
+    } catch (error) {
+      console.error("Ekran görüntüsü alınamadı:", error);
+    } finally {
+      setIsCapturing(false);
+    }
+  }, [productName]);
+
+  // NOT: React Strict Mode'da "mount → unmount → mount" simülasyonu yüzünden
+  // burada stopCamera çağırmıyoruz; sadece kullanıcı X'e basınca/kamerayı durdurunca çağrılıyor.
 
   if (!isActive) return null;
 
