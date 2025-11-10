@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createViewport, createSession } from "@shapediver/viewer";
 import PRODUCTS from "./products";
+import ARViewer from "./ARViewer";
+import ExportSystem from "./ExportSystem";
 
 // Ortak input renderer (number/boolean/string/color)
 function ParamInput({ def, value, onChange }) {
@@ -103,12 +105,16 @@ export default function App() {
   const [paramKeys, setParamKeys] = useState([]);
   const [status, setStatus] = useState("");
 
+  // AR ve Export state'leri
+  const [arActive, setArActive] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+
   // Ekranda gösterilecek parametre şeması (statik ya da auto çıkarılmış)
   const [paramDefs, setParamDefs] = useState([]);
   // Parametre değerleri: { [paramId]: value }
   const [values, setValues] = useState({});
 
-  // 1) Viewport’u bir kez kur
+  // 1) Viewport'u bir kez kur
   useEffect(() => {
     (async () => {
       if (!canvasRef.current || viewportReady) return;
@@ -246,6 +252,8 @@ export default function App() {
         </div>
         <nav className="nav">
           <a href="#urun">Ürün</a>
+          <a href="#ar">AR Görünüm</a>
+          <a href="#export">Dışa Aktar</a>
           <a href="#hakkinda">Hakkında</a>
           <a href="#iletisim">İletişim</a>
         </nav>
@@ -256,8 +264,8 @@ export default function App() {
         <div>
           <h1>Web Üzerinde Parametrik Ürün Önizleme</h1>
           <p>
-            Ürün seç → parametreleri düzenle → <b>Uygula</b>. (Her ürün kendi
-            şemasını getirir.)
+            Ürün seç → parametreleri düzenle → <b>Uygula</b> → AR'da görüntüle →
+            Dışa aktar. (Her ürün kendi şemasını getirir.)
           </p>
         </div>
         <div className="hero-badge">POC</div>
@@ -272,6 +280,22 @@ export default function App() {
             style={{ justifyContent: "space-between" }}
           >
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                className="btn"
+                onClick={() => setArActive(true)}
+                disabled={!session}
+                title="Artırılmış gerçeklik modunu başlat"
+              >
+                📱 AR Görünüm
+              </button>
+              <button
+                className="btn"
+                onClick={() => setShowExport(!showExport)}
+                disabled={!paramDefs.length}
+                title="Parametreleri dışa aktar"
+              >
+                💾 Dışa Aktar
+              </button>
               <button className="btn" disabled>
                 İndir Görsel
               </button>
@@ -318,6 +342,25 @@ export default function App() {
               {status}
             </div>
           )}
+
+          {/* Export Sistemi */}
+          {showExport && (
+            <div
+              style={{
+                marginTop: 16,
+                padding: 16,
+                background: "#1a1d25",
+                borderRadius: 8,
+              }}
+            >
+              <ExportSystem
+                session={session}
+                currentParams={values}
+                paramDefs={paramDefs}
+                productName={product?.name || "Ürün"}
+              />
+            </div>
+          )}
         </section>
 
         {/* Parametre Paneli */}
@@ -355,7 +398,7 @@ export default function App() {
 
           <hr className="divider" />
           <details>
-            <summary>Modelde bulunan parametre ID’leri</summary>
+            <summary>Modelde bulunan parametre ID'leri</summary>
             {paramKeys.length === 0 ? (
               <div className="hint">Henüz okunamadı.</div>
             ) : (
@@ -382,6 +425,15 @@ export default function App() {
           <a href="#iade">İade/Değişim</a>
         </div>
       </footer>
+
+      {/* AR Viewer Overlay */}
+      <ARViewer
+        session={session}
+        isActive={arActive}
+        onClose={() => setArActive(false)}
+        currentParams={values}
+        productName={product?.name || "Ürün"}
+      />
     </div>
   );
 }
