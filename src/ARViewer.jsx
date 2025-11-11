@@ -164,12 +164,13 @@ const ARViewer = ({
   }, [cameraStream]);
 
   // ---- Three.js sahnesini kur ----
-  const setupThreeScene = useCallback(() => {
+  const setupThreeScene = useCallback(async () => {
     if (!canvasRef.current) return;
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
+    // Kamera
     const camera = new THREE.PerspectiveCamera(
       60,
       canvasRef.current.clientWidth / canvasRef.current.clientHeight,
@@ -179,6 +180,7 @@ const ARViewer = ({
     camera.position.set(0, 0, 1);
     cameraRef.current = camera;
 
+    // Renderer
     const renderer = new THREE.WebGLRenderer({
       canvas: canvasRef.current,
       alpha: true,
@@ -196,44 +198,56 @@ const ARViewer = ({
     rendererRef.current = renderer;
 
     // Işıklar
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
-
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(5, 10, 5);
     directionalLight.castShadow = true;
     scene.add(directionalLight);
 
-    // Basit model (ileride ShapeDiver modeline bağlayabilirsin)
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x7aa2ff,
-      metalness: 0.3,
-      roughness: 0.4,
-      transparent: true,
-      opacity: 0.9,
-    });
+    // ✅ ShapeDiver sahnesini ekle
+    try {
+      if (session && session.scene) {
+        const sdScene = session.scene;
+        // SceneGraph root node'u al
+        const root = sdScene.threeJsScene
+          ? sdScene.threeJsScene
+          : sdScene.getRootNode?.();
 
-    const model = new THREE.Mesh(geometry, material);
-    model.position.set(modelPosition.x, modelPosition.y, modelPosition.z);
-    model.rotation.set(modelRotation.x, modelRotation.y, modelRotation.z);
-    model.scale.setScalar(modelScale);
-    model.castShadow = true;
+        if (root) {
+          console.log("[AR] ShapeDiver sahnesi eklendi:", root);
+          scene.add(root);
+        } else {
+          console.warn(
+            "[AR] ShapeDiver sahnesi bulunamadı, demo küp gösterilecek."
+          );
+          const demo = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 1, 1),
+            new THREE.MeshStandardMaterial({ color: 0x7aa2ff })
+          );
+          scene.add(demo);
+        }
+      } else {
+        console.warn("[AR] session.scene bulunamadı, demo küp gösterilecek.");
+        const demo = new THREE.Mesh(
+          new THREE.BoxGeometry(1, 1, 1),
+          new THREE.MeshStandardMaterial({ color: 0x7aa2ff })
+        );
+        scene.add(demo);
+      }
+    } catch (err) {
+      console.error("[AR] ShapeDiver modeli yüklenemedi:", err);
+    }
 
-    modelRef.current = model;
-    scene.add(model);
-  }, [modelPosition, modelRotation, modelScale]);
+    // Model pozisyon/ölçek ayarları
+    scene.position.set(modelPosition.x, modelPosition.y, modelPosition.z);
+    scene.scale.setScalar(modelScale);
+  }, [session, modelPosition, modelScale]);
 
-  // ---- Animasyon döngüsü ----
   const animate = useCallback(() => {
     if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
 
     animationIdRef.current = requestAnimationFrame(animate);
-
-    if (modelRef.current) {
-      modelRef.current.rotation.y += 0.005;
-    }
-
     rendererRef.current.render(sceneRef.current, cameraRef.current);
   }, []);
 

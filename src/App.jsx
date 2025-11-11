@@ -94,6 +94,7 @@ function ParamInput({ def, value, onChange }) {
 export default function App() {
   const canvasRef = useRef(null);
   const [viewportReady, setViewportReady] = useState(false);
+  const [viewport, setViewport] = useState(null); // 👈 YENİ
 
   const [selectedId, setSelectedId] = useState(PRODUCTS[0]?.id ?? "");
   const product = useMemo(
@@ -106,7 +107,7 @@ export default function App() {
   const [status, setStatus] = useState("");
 
   // AR ve Export state'leri
-  const [arActive, setArActive] = useState(false);
+  //const [arActive, setArActive] = useState(false);
   const [showExport, setShowExport] = useState(false);
 
   // Ekranda gösterilecek parametre şeması (statik ya da auto çıkarılmış)
@@ -114,14 +115,55 @@ export default function App() {
   // Parametre değerleri: { [paramId]: value }
   const [values, setValues] = useState({});
 
+  const handleStartAR = async () => {
+    if (!viewport || !session) {
+      setStatus("AR için viewer henüz hazır değil.");
+      return;
+    }
+
+    try {
+      // Tarayıcı yerleşik AR destekliyor mu?
+      const canUseBrowserAR = viewport.viewableInAR();
+      const isBadMobile = viewport.isMobileDeviceWithoutBrowserARSupport();
+
+      // İstersen burada viewport.arScale / arRotation / arTranslation ayarlayabilirsin
+      // Örnek:
+      // viewport.arScale = [0.001, 0.001, 0.001]; // mm -> m gibi
+
+      if (canUseBrowserAR && !isBadMobile) {
+        // Destekleyen mobil tarayıcı (Safari iOS, Chrome Android vs.)
+        await viewport.viewInAR();
+      } else {
+        // Desteklemiyorsa link üret ve yeni sekmede aç (Quick Look / Scene Viewer)
+        const link = await viewport.createArSessionLink(session.node, false);
+        if (link) {
+          window.open(link, "_blank");
+        } else {
+          setStatus("AR linki oluşturulamadı.");
+        }
+      }
+    } catch (err) {
+      console.error("[AR] Hata:", err);
+      setStatus(
+        "AR modu başlatılamadı. ShapeDiver model ayarlarında AR'ın aktif olduğundan emin olun."
+      );
+    }
+  };
+
   // 1) Viewport'u bir kez kur
   useEffect(() => {
     (async () => {
-      if (!canvasRef.current || viewportReady) return;
-      await createViewport({ id: "myViewport", canvas: canvasRef.current });
+      if (!canvasRef.current || viewport) return; // 👈 viewport varsa tekrar oluşturma
+
+      const vp = await createViewport({
+        id: "myViewport",
+        canvas: canvasRef.current,
+      });
+
+      setViewport(vp); // 👈 kaydet
       setViewportReady(true);
     })();
-  }, [viewportReady]);
+  }, [viewport]);
 
   // 2) Ürün değişince yeni session aç + parametre şemasını hazırla
   useEffect(() => {
@@ -289,8 +331,8 @@ export default function App() {
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
                 className="btn"
-                onClick={() => setArActive(true)}
-                disabled={!session}
+                onClick={handleStartAR}
+                disabled={!session || !viewport}
                 title="Artırılmış gerçeklik modunu başlat"
               >
                 📱 AR Görünüm
@@ -432,15 +474,6 @@ export default function App() {
           <a href="#iade">İade/Değişim</a>
         </div>
       </footer>
-
-      {/* AR Viewer Overlay */}
-      <ARViewer
-        session={session}
-        isActive={arActive}
-        onClose={() => setArActive(false)}
-        currentParams={values}
-        productName={product?.name || "Ürün"}
-      />
     </div>
   );
 }
